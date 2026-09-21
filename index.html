@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>現場発ビルドログ</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Shippori+Mincho:wght@400;700;800&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+
+  /* ============ tokens (dark-first: bare root = dark) ============ */
+  :root{
+    --bg: #0f1424;
+    --surface: #171d34;
+    --surface-2: #1f2747;
+    --ink: #e9edf6;
+    --ink-muted: #9aa4c2;
+    --line: #2b3358;
+    --brass: #e2b04a;
+    --brass-ink: #241a05;
+    --brass-soft: rgba(226,176,74,.14);
+    --shadow: 0 18px 40px -20px rgba(0,0,0,.55);
+  }
+  @media (prefers-color-scheme: light){
+    :root:not([data-theme="dark"]){
+      --bg: #eef0f2;
+      --surface: #ffffff;
+      --surface-2: #e3e8ef;
+      --ink: #141a2c;
+      --ink-muted: #58627c;
+      --line: #ccd3e0;
+      --brass: #a5681e;
+      --brass-ink: #fff8ec;
+      --brass-soft: rgba(165,104,30,.10);
+      --shadow: 0 18px 36px -22px rgba(30,40,70,.22);
+    }
+  }
+  :root[data-theme="light"]{
+    --bg: #eef0f2;
+    --surface: #ffffff;
+    --surface-2: #e3e8ef;
+    --ink: #141a2c;
+    --ink-muted: #58627c;
+    --line: #ccd3e0;
+    --brass: #a5681e;
+    --brass-ink: #fff8ec;
+    --brass-soft: rgba(165,104,30,.10);
+    --shadow: 0 18px 36px -22px rgba(30,40,70,.22);
+  }
+  :root[data-theme="dark"]{
+    --bg: #0f1424;
+    --surface: #171d34;
+    --surface-2: #1f2747;
+    --ink: #e9edf6;
+    --ink-muted: #9aa4c2;
+    --line: #2b3358;
+    --brass: #e2b04a;
+    --brass-ink: #241a05;
+    --brass-soft: rgba(226,176,74,.14);
+    --shadow: 0 18px 40px -20px rgba(0,0,0,.55);
+  }
+
+  *{ box-sizing:border-box; }
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:"Zen Kaku Gothic New", "Noto Sans JP", sans-serif;
+    line-height:1.75;
+    -webkit-font-smoothing:antialiased;
+  }
+  @media (prefers-reduced-motion: reduce){
+    *{ animation:none !important; transition:none !important; }
+  }
+
+  .mono{ font-family:"JetBrains Mono", ui-monospace, monospace; }
+
+  h1,h2,h3{
+    font-family:"Shippori Mincho", serif;
+    font-weight:800;
+    text-wrap:balance;
+    margin:0;
+  }
+
+  .page{ max-width:1080px; margin:0 auto; padding:0 clamp(20px,5vw,56px); }
+
+  /* ============ topbar ============ */
+  .topbar{
+    max-width:1080px; margin:0 auto;
+    padding:22px clamp(20px,5vw,56px) 0;
+    display:flex; align-items:baseline; justify-content:space-between;
+    gap:12px;
+  }
+  .topbar .mark{
+    font-size:13px; letter-spacing:.14em;
+    color:var(--ink-muted);
+  }
+  .topbar .mark b{ color:var(--brass); font-weight:700; }
+  .topbar .count{
+    font-size:12px; color:var(--ink-muted); letter-spacing:.08em;
+  }
+
+  /* ============ hero ============ */
+  .hero{
+    position:relative;
+    padding:64px 0 56px;
+    overflow:hidden;
+  }
+  .hero-grid{
+    position:absolute; inset:-40px -10% auto -10%;
+    height:340px;
+    background-image:
+      repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 56px),
+      repeating-linear-gradient(0deg, var(--line) 0 1px, transparent 1px 56px);
+    opacity:.35;
+    -webkit-mask-image: linear-gradient(180deg, black, transparent 88%);
+            mask-image: linear-gradient(180deg, black, transparent 88%);
+    pointer-events:none;
+  }
+  .eyebrow{
+    position:relative;
+    display:inline-flex; align-items:center; gap:10px;
+    font-size:12.5px; letter-spacing:.16em;
+    color:var(--brass);
+    margin:0 0 22px;
+  }
+  .eyebrow::after{
+    content:"";
+    width:46px; height:1px; background:var(--brass);
+    opacity:.6;
+  }
+  .hero h1{
+    position:relative;
+    font-size:clamp(26px, 3.6vw, 40px);
+    line-height:1.5;
+    max-width:16.5em;
+  }
+  .hero-sub{
+    position:relative;
+    max-width:640px;
+    margin:22px 0 0;
+    color:var(--ink-muted);
+    font-size:15px;
+  }
+
+  /* ============ log section ============ */
+  .log{ padding:8px 0 72px; }
+  .log-head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    border-bottom:1px solid var(--line);
+    padding-bottom:14px;
+    margin-bottom:28px;
+    gap:16px;
+  }
+  .log-head h2{
+    font-size:20px;
+  }
+  .log-head .count{
+    font-size:12px; letter-spacing:.1em; color:var(--ink-muted);
+  }
+
+  .cards{
+    display:grid;
+    grid-template-columns:repeat(auto-fit, minmax(300px, 1fr));
+    gap:22px;
+  }
+
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:3px;
+    overflow:hidden;
+    box-shadow:var(--shadow);
+    display:flex; flex-direction:column;
+  }
+  .card-meta{
+    display:flex; align-items:center; gap:10px;
+    padding:14px 16px 0;
+  }
+  .card-no{
+    font-size:11px; color:var(--brass); letter-spacing:.06em;
+  }
+  .card-type{
+    font-size:11px; color:var(--ink-muted); letter-spacing:.04em;
+  }
+  .card-type::before{
+    content:"·"; margin-right:10px; color:var(--line);
+  }
+
+  .card-visual{
+    margin:14px 16px 0;
+    height:132px;
+    border-radius:2px;
+    position:relative;
+    overflow:hidden;
+    border:1px solid var(--line);
+  }
+
+  .card h3{
+    font-size:19px;
+    padding:16px 16px 0;
+  }
+  .card-desc{
+    padding:10px 16px 0;
+    font-size:13.5px;
+    color:var(--ink-muted);
+  }
+  .card-tags{
+    list-style:none; margin-top:auto; padding:16px;
+    display:flex; flex-wrap:wrap; gap:8px;
+  }
+  .card-tags li{
+    font-size:11px;
+    font-family:"JetBrains Mono", monospace;
+    color:var(--ink-muted);
+    border:1px solid var(--line);
+    padding:3px 8px;
+    border-radius:2px;
+  }
+
+  .card-facts{
+    margin:14px 16px 0; padding:0;
+    display:flex; flex-direction:column; gap:9px;
+  }
+  .fact{ display:flex; gap:10px; align-items:baseline; }
+  .fact dt{
+    flex:0 0 30px;
+    font-family:"JetBrains Mono", monospace;
+    font-size:10px; letter-spacing:.06em;
+    color:var(--brass);
+  }
+  .fact dd{
+    margin:0; font-size:13px; line-height:1.7; color:var(--ink-muted);
+  }
+
+  .card-time{
+    margin:14px 16px 0; padding:9px 12px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:2px;
+    display:flex; align-items:baseline; gap:9px; flex-wrap:wrap;
+  }
+  .card-time .lbl{
+    font-family:"JetBrains Mono", monospace; font-size:10px; letter-spacing:.06em;
+    color:var(--ink-muted); flex:0 0 30px;
+  }
+  .card-time .before{
+    font-family:"JetBrains Mono", monospace; font-size:12.5px;
+    color:var(--ink-muted); text-decoration:line-through; text-decoration-color:var(--line);
+  }
+  .card-time .arrow{ color:var(--ink-muted); font-size:12px; }
+  .card-time .after{
+    font-family:"JetBrains Mono", monospace; font-size:12.5px; font-weight:700; color:var(--brass);
+  }
+  .card-time .note{
+    margin-left:auto; font-size:10.5px; color:var(--ink-muted);
+  }
+
+  .disclaimer{
+    font-size:12px; color:var(--ink-muted); margin:-14px 0 26px; max-width:56em;
+  }
+
+  /* ---- visual 01: seat system (fixed real product colors) ---- */
+  .v-seat{
+    background:
+      repeating-linear-gradient(90deg, rgba(255,255,255,.05) 0 1px, transparent 1px 18px),
+      repeating-linear-gradient(0deg, rgba(255,255,255,.05) 0 1px, transparent 1px 18px),
+      #1a1a2e;
+    display:flex; align-items:center; gap:10px;
+    padding:0 14px;
+  }
+  .v-seat .t{
+    background:#16213e; border:1px solid rgba(255,255,255,.10);
+    border-radius:5px; padding:6px 8px; flex:1;
+  }
+  .v-seat .t .lbl{ font-size:9px; color:#e9edf6; font-family:"JetBrains Mono",monospace; }
+  .v-seat .t .res{ font-size:10px; color:#e2b04a; margin-top:3px; font-weight:700; }
+  .v-seat .t .res.empty{ color:#6b7290; font-weight:400; }
+  .v-seat .t .dots{ display:flex; gap:3px; margin-top:6px; }
+  .v-seat .t .dots span{ width:5px; height:5px; border-radius:50%; background:#3a4270; }
+  .v-seat .t .dots span.occ{ background:#e2b04a; }
+  .v-seat .t.joined{ position:relative; flex:1.5; }
+  .v-seat .t.joined::after{
+    content:""; position:absolute; top:8px; bottom:8px; left:50%;
+    width:1px; background:rgba(255,255,255,.08);
+  }
+
+  /* ---- visual 02: local HP generator (fixed real product colors) ---- */
+  .v-hp{
+    background:linear-gradient(155deg,#241a12 0%,#2c1810 45%,#1a1310 100%);
+    padding:16px 14px;
+  }
+  .v-hp .pill{
+    display:inline-block; font-size:9px; color:#d99a3f;
+    border:1px solid rgba(217,154,63,.5); border-radius:10px;
+    padding:2px 8px; letter-spacing:.08em; margin-bottom:8px;
+  }
+  .v-hp .h{ font-size:19px; font-weight:800; font-family:"Shippori Mincho",serif; }
+  .v-hp .h span{ color:#e0a63f; }
+  .v-hp .sub{ font-size:9.5px; color:#c9beb4; margin-top:4px; }
+  .v-hp .cta{
+    display:inline-block; margin-top:10px; background:#e0a63f; color:#241a12;
+    font-size:9.5px; font-weight:700; padding:5px 10px; border-radius:2px;
+  }
+
+  /* ---- visual 03: sales proposal AI team (fixed real product colors) ---- */
+  .v-prop{ background:#eef1f6; display:flex; flex-direction:column; }
+  .v-prop .bar{
+    background:#1e2a44; height:26px; display:flex; align-items:center; gap:6px; padding:0 10px;
+  }
+  .v-prop .bar .logo{ width:22px; height:14px; border:1px dashed rgba(255,255,255,.35); border-radius:2px; }
+  .v-prop .bar .name{ font-size:8px; color:#aab4cc; }
+  .v-prop .body{ display:flex; gap:8px; padding:10px; flex:1; }
+  .v-prop .pc{
+    flex:1; background:#fff; border-top:2px solid #d97a35; border-radius:2px;
+    padding:8px; box-shadow:0 4px 10px -6px rgba(20,20,30,.3);
+  }
+  .v-prop .pc .dot{ width:12px; height:12px; border-radius:50%; background:#fbe2cd; border:1px solid #d97a35; margin-bottom:6px; }
+  .v-prop .pc .t{ font-size:9.5px; font-weight:700; color:#1e2a44; }
+
+  /* ---- visual 04: gdocs_to_note (theme-aware diagram) ---- */
+  .v-flow{
+    background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    padding:0 10px;
+  }
+  .v-flow .node{
+    font-family:"JetBrains Mono",monospace; font-size:10px;
+    color:var(--ink); background:var(--surface); border:1px solid var(--line);
+    border-radius:2px; padding:7px 9px; text-align:center; line-height:1.4;
+  }
+  .v-flow .arrow{ color:var(--brass); font-size:13px; }
+
+  /* ---- visual 05: coupon research (theme-aware ticket) ---- */
+  .v-coupon{
+    background:var(--surface-2);
+    display:flex; align-items:center; justify-content:center;
+    padding:12px;
+  }
+  .v-coupon .ticket{
+    width:100%; background:var(--surface); border:1px dashed var(--line);
+    border-radius:4px; padding:8px 12px;
+  }
+  .v-coupon .row{
+    display:flex; justify-content:space-between; font-family:"JetBrains Mono",monospace;
+    font-size:10px; color:var(--ink-muted); padding:3px 0;
+    border-bottom:1px dotted var(--line);
+  }
+  .v-coupon .row:last-child{ border-bottom:none; }
+  .v-coupon .row b{ color:var(--brass); font-weight:700; }
+
+  /* ============ footer ============ */
+  .footer{
+    border-top:1px solid var(--line);
+    padding:28px 0 40px;
+    display:flex; flex-wrap:wrap; gap:10px 24px;
+    justify-content:space-between; align-items:baseline;
+  }
+  .footer p{
+    margin:0; color:var(--ink-muted); font-size:13.5px; max-width:46em;
+  }
+  .footer .sig{
+    font-size:11px; letter-spacing:.1em; color:var(--ink-muted);
+    white-space:nowrap;
+  }
+  .footer .sig b{ color:var(--brass); }
+
+  @media (max-width:560px){
+    .hero{ padding:44px 0 40px; }
+    .v-hp .h{ font-size:17px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="mark"><b>現場発</b> ビルドログ</div>
+  <div class="count mono">gorie</div>
+</div>
+
+<div class="page">
+
+  <section class="hero">
+    <div class="hero-grid" aria-hidden="true"></div>
+    <p class="eyebrow mono">WORK LOG — 全5件</p>
+    <h1>ケアセンターの経営管理をしながら、現場で困るたびに、Claude&nbsp;Codeで一つずつ形にしてきた。</h1>
+    <p class="hero-sub">飲食店の予約板、地元業者への営業ツール、中小企業向けの提案書を書くAIチーム、記事の自動投稿、クーポンの自動収集——専門知識のないところから、実際の業務や営業で使うために組み上げたシステムの記録です。</p>
+  </section>
+
+  <section class="log">
+    <div class="log-head">
+      <h2>制作物</h2>
+      <span class="count mono">05 SYSTEMS</span>
+    </div>
+    <p class="disclaimer">※ 各カードの「時間短縮」は実測ではなく、手作業でかかっていた時間との比較による目安です。</p>
+
+    <div class="cards">
+
+      <!-- 01 -->
+      <article class="card">
+        <div class="card-meta">
+          <span class="card-no mono">01</span>
+          <span class="card-type">スマホ Web アプリ・単一HTML</span>
+        </div>
+        <div class="card-visual v-seat" aria-hidden="true">
+          <div class="t">
+            <div class="lbl">テーブル1</div>
+            <div class="res empty">空き</div>
+            <div class="dots"><span></span><span></span><span></span><span></span></div>
+          </div>
+          <div class="t joined">
+            <div class="lbl">テーブル2+3</div>
+            <div class="res">田中様</div>
+            <div class="dots"><span class="occ"></span><span class="occ"></span><span class="occ"></span><span class="occ"></span></div>
+          </div>
+        </div>
+        <h3>お店の席配置システム</h3>
+        <p class="card-desc">テーブル6卓×4席をスマホでドラッグ配置。近づけると自動でスナップし、境界線が消えて"合体"を表現する。タップでテーブル単位に予約名を入力でき、右下ボタンで全卓の予約状況を一覧表示。データはlocalStorageに保存され、閉じても残る。</p>
+        <dl class="card-facts">
+          <div class="fact"><dt>WHY</dt><dd>紙の座席表やホワイトボードは、卓をくっつける・空席を確認するたびに書き直しと目視確認が必要だった。</dd></div>
+          <div class="fact"><dt>NOW</dt><dd>スマホで卓をドラッグするだけで、配置と予約状況がその場で更新されるようになった。</dd></div>
+        </dl>
+        <div class="card-time">
+          <span class="lbl mono">TIME</span>
+          <span class="before mono">座席表の作成・確認 15分/日</span>
+          <span class="arrow">→</span>
+          <span class="after mono">1〜2分/日</span>
+          <span class="note">目安</span>
+        </div>
+        <ul class="card-tags">
+          <li>HTML/CSS/JS</li><li>Pointer Events</li><li>localStorage</li>
+        </ul>
+      </article>
+
+      <!-- 02 -->
+      <article class="card">
+        <div class="card-meta">
+          <span class="card-no mono">02</span>
+          <span class="card-type">営業支援パイプライン・Python+Claude</span>
+        </div>
+        <div class="card-visual v-hp" aria-hidden="true">
+          <span class="pill">土肥・西伊豆 の 工務店</span>
+          <div class="h">野田<span>工務店</span></div>
+          <div class="sub">土肥で愛され続ける地元の工務店</div>
+          <span class="cta">無料でご相談・お見積り</span>
+        </div>
+        <h3>近所のHP勝手に作りましたシステム</h3>
+        <p class="card-desc">ホームページを持たない伊豆エリアの工務店・塗装業などへの飛び込み営業ツール。市区町村を指定すると未取得業者を洗い出し、Claudeが競合HPを3〜5社調査したうえで、業種別デザインのサンプルHPと営業プランを自動生成する。</p>
+        <dl class="card-facts">
+          <div class="fact"><dt>WHY</dt><dd>「HPを作りませんか」と口頭で提案しても響きにくい。先に"サンプル"を見せたほうが話が早いと考えた。</dd></div>
+          <div class="fact"><dt>NOW</dt><dd>業者の抽出から競合調査・サンプルHP・営業プランの作成までが一気通貫で回るようになり、飛び込み営業の準備に使っている。</dd></div>
+        </dl>
+        <div class="card-time">
+          <span class="lbl mono">TIME</span>
+          <span class="before mono">調査+HP+提案書 半日</span>
+          <span class="arrow">→</span>
+          <span class="after mono">1時間前後</span>
+          <span class="note">目安</span>
+        </div>
+        <ul class="card-tags">
+          <li>Python</li><li>スクレイピング</li><li>Claude調査</li>
+        </ul>
+      </article>
+
+      <!-- 03 -->
+      <article class="card">
+        <div class="card-meta">
+          <span class="card-no mono">03</span>
+          <span class="card-type">提案書自動生成・AI9名体制</span>
+        </div>
+        <div class="card-visual v-prop" aria-hidden="true">
+          <div class="bar"><div class="logo"></div><div class="name">貴社名を挿入</div></div>
+          <div class="body">
+            <div class="pc"><div class="dot"></div><div class="t">車検の連絡漏れ</div></div>
+            <div class="pc"><div class="dot"></div><div class="t">電話対応の負荷</div></div>
+          </div>
+        </div>
+        <h3>営業AI社員</h3>
+        <p class="card-desc">課題分析・業務効率化設計・ROI試算・営業設計・資料デザインなど、9名体制のAIエージェントが分担し、中小事業者向けの効率化提案をA4×2ページのPDFに仕上げる。価格は「年間効果÷3」を基準にROI約3倍で設計し、施策は単品メニュー形式で提示する。</p>
+        <dl class="card-facts">
+          <div class="fact"><dt>WHY</dt><dd>検討項目が多く1人で詰めると抜け漏れが出やすい。特に当初ROI5〜20倍だった値付けの甘さは、役割を分けて初めて気づけた。</dd></div>
+          <div class="fact"><dt>NOW</dt><dd>個人美容師・自動車整備工場(5名)向けなど、実際にA4×2ページの提案書PDFを複数件作成し、営業資料として使っている。</dd></div>
+        </dl>
+        <div class="card-time">
+          <span class="lbl mono">TIME</span>
+          <span class="before mono">分析〜PDF化 1〜2日</span>
+          <span class="arrow">→</span>
+          <span class="after mono">数時間</span>
+          <span class="note">目安</span>
+        </div>
+        <ul class="card-tags">
+          <li>マルチエージェント</li><li>Python(PDF)</li><li>Chrome Headless</li>
+        </ul>
+      </article>
+
+      <!-- 04 -->
+      <article class="card">
+        <div class="card-meta">
+          <span class="card-no mono">04</span>
+          <span class="card-type">コンテンツ自動投稿・Python</span>
+        </div>
+        <div class="card-visual v-flow" aria-hidden="true">
+          <div class="node">Google<br>Docs</div>
+          <div class="arrow">→</div>
+          <div class="node">記事に<br>変換</div>
+          <div class="arrow">→</div>
+          <div class="node">note.com<br>下書き</div>
+        </div>
+        <h3>gdocs_to_note</h3>
+        <p class="card-desc">Googleドキュメントで書いた記事を、画像を含めてそのままnote.comの下書きに自動投稿する。HTML取得→記事構造への変換→画像の一時保存→ブラウザ自動操作までを、URLひとつ渡すコマンド一本で実行する。</p>
+        <dl class="card-facts">
+          <div class="fact"><dt>WHY</dt><dd>note投稿のたびにコピペ・画像の貼り直し・書式調整が発生し、書くこと以外に手間がかかっていた。</dd></div>
+          <div class="fact"><dt>NOW</dt><dd>GoogleドキュメントのURLを渡すだけで、noteの下書きまで自動で作成されるようになった。</dd></div>
+        </dl>
+        <div class="card-time">
+          <span class="lbl mono">TIME</span>
+          <span class="before mono">1記事の投稿作業 15〜20分</span>
+          <span class="arrow">→</span>
+          <span class="after mono">1分程度</span>
+          <span class="note">目安</span>
+        </div>
+        <ul class="card-tags">
+          <li>Python</li><li>Playwright</li><li>Google Docs</li>
+        </ul>
+      </article>
+
+      <!-- 05 -->
+      <article class="card">
+        <div class="card-meta">
+          <span class="card-no mono">05</span>
+          <span class="card-type">自動リサーチツール・Python</span>
+        </div>
+        <div class="card-visual v-coupon" aria-hidden="true">
+          <div class="ticket">
+            <div class="row"><span>AMAZON</span><b>¥500 OFF</b></div>
+            <div class="row"><span>楽天</span><b>10% OFF</b></div>
+            <div class="row"><span>Yahoo!</span><b>¥300 OFF</b></div>
+          </div>
+        </div>
+        <h3>クーポンリサーチツール</h3>
+        <p class="card-desc">Amazon・楽天・Yahoo!ショッピングを巡回し、会員登録なしで誰でも使えるクーポンだけを自動収集する。結果はExcelとテキストの両方で書き出し、バッチファイルをダブルクリックするだけで再実行できる。</p>
+        <dl class="card-facts">
+          <div class="fact"><dt>WHY</dt><dd>誰でも使えるクーポンを3サイト分手作業で探すのは時間がかかるうえ、見落としも多かった。</dd></div>
+          <div class="fact"><dt>NOW</dt><dd>バッチファイルを実行するだけで、Excel・TXTに一覧が出力されるようになった。</dd></div>
+        </dl>
+        <div class="card-time">
+          <span class="lbl mono">TIME</span>
+          <span class="before mono">3サイト巡回 30分前後</span>
+          <span class="arrow">→</span>
+          <span class="after mono">実行して数分待つだけ</span>
+          <span class="note">目安</span>
+        </div>
+        <ul class="card-tags">
+          <li>Python</li><li>スクレイピング</li><li>Excel出力</li>
+        </ul>
+      </article>
+
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>経営管理や営業の合間に、必要になった分だけ作っています。すべて Claude Code 上で要件定義からコードまで組み立てました。</p>
+    <div class="sig mono"><b>現場発</b> ビルドログ — gorie</div>
+  </footer>
+
+</div>
+
+</body>
+</html>
